@@ -1,4 +1,5 @@
-
+pmalloc:
+	gcc -g -o pmalloc pmalloc.c
 
 all:
 	(cd tests && make)

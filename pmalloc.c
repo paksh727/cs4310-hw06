@@ -57,12 +57,22 @@ pmalloc(size_t size)
     stats.chunks_allocated += 1;
     size += sizeof(size_t);
     if (mem==NULL) {
-	    mem = mmap(0, PAGE_SIZE, PROT_WRITE, MAP_SHARED, 0, 0);
+	    mem = mmap(0, PAGE_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, 0, 0);
 	    // set the first bytes to be our size - size desired to be allocated - variable: size
-	    &mem = size;
+	    mem = size;
+	    //*x = "hello world"
+	//	*x++
+	    printf("%d\n", &mem);
+	    printf("%d\n", *(&mem));
+	    printf("%d\n", sizeof(size_t));
+	    printf("%d\n", &mem+sizeof(size_t));
+	    //*(&mem+sizeof(size_t))
+	    //mem->size=size;
 	    // *mem = *mem + size + sizeof(size_t)
 	    // return *m
-	    return *mem + sizeof(size_t);
+	    //*mem -> pointer to our new page
+
+	    return *(&mem + (sizeof(size_t)/8));
     }
     else {
 	    // Transverse linked list, looking for block that is just big enough
@@ -78,7 +88,9 @@ void
 pfree(void* item)
 {
     stats.chunks_freed += 1;
-
+	*(&item) = &mem;
+	mem = *(&item-sizeof(size_t));
+	//*(&item-sizeof(size_t))
     // check if null
     // set *item->next = *mem;
     // *mem = *item-sizeof(size_t)
@@ -86,3 +98,8 @@ pfree(void* item)
     // TODO: Actually free the item.
 }
 
+int main () {
+	// TODO: Test our malloc
+	pmalloc(5);
+	return 0;
+}
