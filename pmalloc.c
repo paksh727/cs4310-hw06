@@ -56,25 +56,28 @@ pmalloc(size_t size)
 {
     stats.chunks_allocated += 1;
     size += sizeof(size_t);
+    if (size<16) size=16;
     if (mem==NULL) {
 	    mem = mmap(0, PAGE_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, 0, 0);
 	    // set the first bytes to be our size - size desired to be allocated - variable: size
 	    mem = size;
-	    //*x = "hello world"
-	//	*x++
-	    printf("%d\n", &mem);
-	    printf("%d\n", *(&mem));
-	    printf("%d\n", sizeof(size_t));
-	    printf("%d\n", &mem+sizeof(size_t));
+	    //printf("%d\n", &mem);
+	    printf("%d\n", mem);
+	    //printf("%d\n", sizeof(size_t));
+	    //printf("%d\n", &mem+sizeof(size_t));
 	    //*(&mem+sizeof(size_t))
 	    //mem->size=size;
 	    // *mem = *mem + size + sizeof(size_t)
 	    // return *m
 	    //*mem -> pointer to our new page
+	    void *pointer = *(&mem+(sizeof(size_t)/8));
+	    mem = *(&mem+size);
+	    mem=4096-size;
 
-	    return *(&mem + (sizeof(size_t)/8));
+	    return pointer;
     }
     else {
+		printf("%d\n", mem);
 	    // Transverse linked list, looking for block that is just big enough
 	    // if no space is available that is large enough, call mmap(), move last free pointer to new page
 	    // Else,
@@ -88,8 +91,8 @@ void
 pfree(void* item)
 {
     stats.chunks_freed += 1;
-	*(&item) = &mem;
-	mem = *(&item-sizeof(size_t));
+	item = &mem;
+	mem = *(&item-(sizeof(size_t)/8));
 	//*(&item-sizeof(size_t))
     // check if null
     // set *item->next = *mem;
@@ -101,5 +104,6 @@ pfree(void* item)
 int main () {
 	// TODO: Test our malloc
 	pmalloc(5);
+	pmalloc(45);
 	return 0;
 }
