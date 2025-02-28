@@ -9,6 +9,14 @@ const size_t PAGE_SIZE = 4096;
 static pm_stats stats;  
 static node *mem = NULL; 
 
+char *pstrdup(char *arg) {
+	int i=0;
+	for(; arg[i]!=0; i++);
+	char *buf = pmalloc(i+1);
+	for(int j=0; j<=i; j++) buf[j]=arg[j];
+	return buf;
+}
+
 long free_list_length() {
     long length = 0;
     node *current = mem;
@@ -98,7 +106,7 @@ void pfree(void* item) {
     // working on it adding code that merges free blocks
 }
 
-int main() {
+/*int main() {
     // Example usage of the custom malloc/free
     void* p1 = pmalloc(100);
     void* p2 = pmalloc(200);
@@ -108,4 +116,4 @@ int main() {
     // Print stats
     pprintstats();
     return 0;
-}
+}*/
