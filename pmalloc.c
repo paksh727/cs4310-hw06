@@ -54,37 +54,17 @@ div_up(size_t xx, size_t yy)
 void*
 pmalloc(size_t size)
 {
-    stats.chunks_allocated += 1;
-    size += sizeof(size_t);
-    if (size<16) size=16;
-    if (mem==NULL) {
-	    mem = mmap(0, PAGE_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, 0, 0);
-	    // set the first bytes to be our size - size desired to be allocated - variable: size
-	    mem = size;
-	    //printf("%d\n", &mem);
-	    printf("%d\n", mem);
-	    //printf("%d\n", sizeof(size_t));
-	    //printf("%d\n", &mem+sizeof(size_t));
-	    //*(&mem+sizeof(size_t))
-	    //mem->size=size;
-	    // *mem = *mem + size + sizeof(size_t)
-	    // return *m
-	    //*mem -> pointer to our new page
-	    void *pointer = *(&mem+(sizeof(size_t)/8));
-	    mem = *(&mem+size);
-	    mem=4096-size;
+	size += sizeof(size_t);
+	if(size < PAGE_SIZE){
+		//Try to find a free space in that page
+		node* prev = NULL;
+		node* curr = mem;
+		while(curr){
+			
+		}
+	}
+	//Else create a page
 
-	    return pointer;
-    }
-    else {
-		printf("%d\n", mem);
-	    // Transverse linked list, looking for block that is just big enough
-	    // if no space is available that is large enough, call mmap(), move last free pointer to new page
-	    // Else,
-	    // Set size for newly allocated chunk, move free pointer, and update size accordingly
-    }
-    // TODO: Actually allocate memory with mmap and a free list.
-    return (void*) 0xDEADBEEF;
 }
 
 void
