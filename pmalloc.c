@@ -1,33 +1,32 @@
-
 #include <stdlib.h>
 #include <sys/mman.h>
 #include <stdio.h>
+#include <unistd.h>
 
 #include "pmalloc.h"
 
 const size_t PAGE_SIZE = 4096;
-static pm_stats stats; // This initializes the stats to 0.
-static struct node *mem;
+static pm_stats stats;  
+static node *mem = NULL; 
 
-long
-free_list_length()
-{
-    // TODO: Calculate the length of the free list.
-    return 0;
+long free_list_length() {
+    long length = 0;
+    node *current = mem;
+    while (current) {
+        length++;
+        current = current->next;
+    }
+    return length;
 }
 
-pm_stats*
-pgetstats()
-{
+pm_stats* pgetstats() {
     stats.free_length = free_list_length();
     return &stats;
 }
 
-void
-pprintstats()
-{
+void pprintstats() {
     stats.free_length = free_list_length();
-    fprintf(stderr, "\n== panther malloc stats ==\n");
+    fprintf(stderr, "\n== Panther Malloc Stats ==\n");
     fprintf(stderr, "Mapped:   %ld\n", stats.pages_mapped);
     fprintf(stderr, "Unmapped: %ld\n", stats.pages_unmapped);
     fprintf(stderr, "Allocs:   %ld\n", stats.chunks_allocated);
@@ -35,75 +34,78 @@ pprintstats()
     fprintf(stderr, "Freelen:  %ld\n", stats.free_length);
 }
 
-static
-size_t
-div_up(size_t xx, size_t yy)
-{
-    // This is useful to calculate # of pages
-    // for large allocations.
+static size_t div_up(size_t xx, size_t yy) {
     size_t zz = xx / yy;
-
     if (zz * yy == xx) {
         return zz;
-    }
-    else {
+    } else {
         return zz + 1;
     }
 }
 
-void*
-pmalloc(size_t size)
-{
-    stats.chunks_allocated += 1;
-    size += sizeof(size_t);
-    if (size<16) size=16;
-    if (mem==NULL) {
-	    mem = mmap(0, PAGE_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, 0, 0);
-	    // set the first bytes to be our size - size desired to be allocated - variable: size
-	    mem = size;
-	    //printf("%d\n", &mem);
-	    printf("%d\n", mem);
-	    //printf("%d\n", sizeof(size_t));
-	    //printf("%d\n", &mem+sizeof(size_t));
-	    //*(&mem+sizeof(size_t))
-	    //mem->size=size;
-	    // *mem = *mem + size + sizeof(size_t)
-	    // return *m
-	    //*mem -> pointer to our new page
-	    void *pointer = *(&mem+(sizeof(size_t)/8));
-	    mem = *(&mem+size);
-	    mem=4096-size;
+void* pmalloc(size_t size) {
+    size += sizeof(header); // Add space for storing the size.
 
-	    return pointer;
+    if (size < PAGE_SIZE) {
+        // Try to find a free block in the list
+        node* prev = NULL;
+        node* curr = mem; // Head of free list
+        while (curr) {
+            if (curr->size >= size) {
+                // Found a large enough block
+                if (prev) {
+                    prev->next = curr->next;
+                } else {
+                    mem = curr->next; // Remove from head
+                }
+                return (void*)((char*)curr + sizeof(header)); // Return pointer after size header
+            }
+            prev = curr;
+            curr = curr->next;
+        }
+
+        // No suitable block found, allocate new page
+        node* new_block = mmap(0, PAGE_SIZE, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
+        if (new_block == MAP_FAILED) {
+            perror("mmap failed");
+            exit(EXIT_FAILURE);
+        }
+        stats.pages_mapped += 1;
+        new_block->size = PAGE_SIZE - sizeof(header); // Adjust for the header
+        return (void*)((char*)new_block + sizeof(header));
     }
-    else {
-		printf("%d\n", mem);
-	    // Transverse linked list, looking for block that is just big enough
-	    // if no space is available that is large enough, call mmap(), move last free pointer to new page
-	    // Else,
-	    // Set size for newly allocated chunk, move free pointer, and update size accordingly
+
+    // Handle large allocation (>= 1 page)
+    size_t pages_needed = div_up(size, PAGE_SIZE);
+    node* new_block = mmap(0, pages_needed * PAGE_SIZE, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
+    if (new_block == MAP_FAILED) {
+        perror("mmap failed");
+        exit(EXIT_FAILURE);
     }
-    // TODO: Actually allocate memory with mmap and a free list.
-    return (void*) 0xDEADBEEF;
+    stats.pages_mapped += pages_needed;
+    new_block->size = pages_needed * PAGE_SIZE - sizeof(header); // Adjust for header
+    return (void*)((char*)new_block + sizeof(header)); // Return pointer after size header
 }
 
-void
-pfree(void* item)
-{
+void pfree(void* item) {
     stats.chunks_freed += 1;
-	item = &mem;
-	mem = *(&item-(sizeof(size_t)/8));
-	//*(&item-sizeof(size_t))
-    // check if null
-    // set *item->next = *mem;
-    // *mem = *item-sizeof(size_t)
-	
-    // TODO: Actually free the item.
+    node* block = (node*)((char*)item - sizeof(header)); // Get the header part
+
+    // Add the freed block back to the free list
+    block->next = mem;
+    mem = block;
+
+    // working on it adding code that merges free blocks
 }
 
-int main () {
-	// TODO: Test our malloc
-	pmalloc(5);
-	pmalloc(45);
-	return 0;
+int main() {
+    // Example usage of the custom malloc/free
+    void* p1 = pmalloc(100);
+    void* p2 = pmalloc(200);
+    pfree(p1);
+    pfree(p2);
+
+    // Print stats
+    pprintstats();
+    return 0;
 }
